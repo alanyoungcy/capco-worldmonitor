@@ -1,0 +1,73 @@
+/* ============================================================
+   Capco brand chrome — https://www.capco.com/
+   Black/white contrast, Baskerville display logo, crimson accents.
+   Core tokens live in main.css :root; this file styles chrome only.
+   ============================================================ */
+
+[data-theme="light"] {
+  --bg: #f7f7f7;
+  --bg-secondary: #ffffff;
+  --surface: #ffffff;
+  --panel-bg: #ffffff;
+  --text: #111111;
+  --text-secondary: #333333;
+  --accent: #000000;
+  --green: var(--capco-red);
+  --border: #e5e5e5;
+  --panel-border: #e5e5e5;
+}
+
+[data-font="system"] {
+  /* Keep Capco sans even when users pick "system" — brand lockup */
+  --font-body-base: var(--font-capco-sans);
+  --font-body: var(--font-capco-sans);
+}
+
+.logo,
+.logo-mobile {
+  font-family: var(--font-capco-display);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: none;
+}
+
+.logo::after {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-left: 8px;
+  margin-bottom: 2px;
+  border-radius: 1px;
+  background: var(--capco-red);
+  vertical-align: middle;
+}
+
+.header {
+  border-bottom-color: color-mix(in srgb, var(--capco-red) 28%, var(--border));
+}
+
+.auth-signin-btn,
+.pro-banner-cta,
+.panel-locked-cta {
+  background: var(--capco-red);
+  border-color: var(--capco-red);
+  color: #fff;
+}
+
+.auth-signup-link:hover {
+  border-color: var(--capco-red);
+  color: var(--capco-red);
+}
+
+:root {
+  --map-bg: #050505;
+  --map-grid: #1a1a1a;
+  --map-country: #121212;
+  --map-stroke: #2a2a2a;
+}
+
+.site-footer-brand-text {
+  font-family: var(--font-capco-display);
+  letter-spacing: 0.02em;
+}

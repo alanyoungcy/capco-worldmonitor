@@ -3,6 +3,7 @@ import type { MapView } from '@/components/MapContainer';
 import type { AuthLauncher } from '@/components/AuthLauncher';
 import { AuthHeaderWidget } from '@/components/AuthHeaderWidget';
 import { SITE_VARIANT } from '@/config';
+import { isCapcoProUnlocked } from '@/config/premium-panels';
 import { getAuthState, subscribeAuthState } from '@/services/auth-state';
 import { track, trackMapViewChange, trackThemeChanged } from '@/services/analytics';
 import { getCurrentTheme, setTheme, showToast } from '@/utils';
@@ -50,6 +51,17 @@ export class MobilePrimaryNav {
   setupAuth(modal: AuthLauncher): void {
     const mobileMount = document.getElementById('mobileAuthWidgetMount');
     const fallback = document.getElementById('mobileAuthFallback') as HTMLButtonElement | null;
+
+    // Capco local fork: no Sign In chrome — treated as default entitled.
+    if (isCapcoProUnlocked()) {
+      if (fallback) {
+        fallback.hidden = true;
+        fallback.setAttribute('aria-hidden', 'true');
+      }
+      if (mobileMount) mobileMount.hidden = true;
+      return;
+    }
+
     const openAuth = () => {
       this.closeMenu();
       modal.open();

@@ -47,6 +47,21 @@ const PROVIDER_CHAIN = [
 
 export type LlmProviderName = typeof PROVIDER_CHAIN[number];
 
+/** Capco / self-host: prefer the configured OpenAI-compatible endpoint for every call. */
+export function preferConfiguredGenericLlm(): boolean {
+  const flag = process.env.CAPCO_LLM_ONLY || process.env.LLM_PRIMARY_PROVIDER || '';
+  if (flag === '1' || flag === 'true' || flag === 'generic') return true;
+  return Boolean(process.env.LLM_API_URL && process.env.LLM_API_KEY && process.env.LLM_MODEL)
+    && !process.env.GROQ_API_KEY
+    && !process.env.OPENROUTER_API_KEY
+    && !process.env.OLLAMA_API_URL;
+}
+
+function defaultProviderChain(): LlmProviderName[] {
+  if (!preferConfiguredGenericLlm()) return [...PROVIDER_CHAIN];
+  return ['generic', ...PROVIDER_CHAIN.filter((p) => p !== 'generic')];
+}
+
 const OPENROUTER_DEFAULT_MODELS = {
   openrouter: DEEPSEEK_V4_FLASH_MODEL_PREFIX,
   'openrouter-free': OPENROUTER_FREE_PRIMARY_MODEL,
@@ -309,7 +324,7 @@ function resolveProviderChain(opts: {
 }): string[] {
   if (opts.forcedProvider) return [opts.forcedProvider];
   if (!Array.isArray(opts.providerOrder) || opts.providerOrder.length === 0) {
-    return [...PROVIDER_CHAIN];
+    return defaultProviderChain();
   }
 
   const seen = new Set<string>();
@@ -320,7 +335,17 @@ function resolveProviderChain(opts: {
     providers.push(provider);
   }
 
-  return providers.length > 0 ? providers : [...PROVIDER_CHAIN];
+  if (providers.length === 0) return defaultProviderChain();
+
+  // Capco: keep the configured generic endpoint first even when a caller
+  // hardcodes openrouter/groq (those keys are usually unset locally).
+  if (preferConfiguredGenericLlm() && providers.includes('generic') && providers[0] !== 'generic') {
+    return ['generic', ...providers.filter((p) => p !== 'generic')];
+  }
+  if (preferConfiguredGenericLlm() && !providers.includes('generic')) {
+    return ['generic', ...providers];
+  }
+  return providers;
 }
 
 // The reasoning profile carries text users type (chat-analyst, deduct-situation).
@@ -330,7 +355,7 @@ function resolveProviderChain(opts: {
 const USER_TEXT_EXCLUDED_PROVIDERS: readonly LlmProviderName[] = ['openrouter-free-backup'];
 
 function fallbackProviders(provider: LlmProviderName, excluded: readonly LlmProviderName[]): LlmProviderName[] {
-  return PROVIDER_CHAIN.filter((p) => p !== provider && !excluded.includes(p));
+  return defaultProviderChain().filter((p) => p !== provider && !excluded.includes(p));
 }
 
 function callLlmProfile(
@@ -340,12 +365,13 @@ function callLlmProfile(
   defaultProvider: LlmProviderName,
   excluded: readonly LlmProviderName[] = [],
 ): Promise<LlmCallResult | null> {
+  const preferredDefault = preferConfiguredGenericLlm() ? 'generic' : defaultProvider;
   const envProvider = process.env[providerEnv];
   const provider = (envProvider && PROVIDER_SET.has(envProvider) ? envProvider : (() => {
-    if (envProvider) console.warn(`[llm] ${providerEnv}="${envProvider}" is not a known provider; falling back to "${defaultProvider}"`);
-    return defaultProvider;
+    if (envProvider) console.warn(`[llm] ${providerEnv}="${envProvider}" is not a known provider; falling back to "${preferredDefault}"`);
+    return preferredDefault;
   })()) as LlmProviderName;
-  const model = process.env[modelEnv];
+  const model = process.env[modelEnv] || (provider === 'generic' ? process.env.LLM_MODEL : undefined);
   const remaining = fallbackProviders(provider, excluded);
   return callLlm({
     ...opts,
@@ -386,8 +412,9 @@ export type LlmStreamOptions = Omit<LlmCallOptions, 'stripThinkingTags' | 'valid
  */
 export function callLlmReasoningStream(opts: LlmStreamOptions): ReadableStream<Uint8Array> {
   const envProvider = process.env.LLM_REASONING_PROVIDER;
-  const provider = (envProvider && PROVIDER_SET.has(envProvider) ? envProvider : 'openrouter') as LlmProviderName;
-  const model = process.env.LLM_REASONING_MODEL;
+  const fallbackProvider = preferConfiguredGenericLlm() ? 'generic' : 'openrouter';
+  const provider = (envProvider && PROVIDER_SET.has(envProvider) ? envProvider : fallbackProvider) as LlmProviderName;
+  const model = process.env.LLM_REASONING_MODEL || (provider === 'generic' ? process.env.LLM_MODEL : undefined);
   const remaining = fallbackProviders(provider, USER_TEXT_EXCLUDED_PROVIDERS);
   const providerOrder = [provider, ...remaining];
   const modelOverrides = model ? { [provider]: model } as Partial<Record<LlmProviderName, string>> : undefined;

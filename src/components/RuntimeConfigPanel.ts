@@ -278,6 +278,9 @@ export class RuntimeConfigPanel extends Panel {
     const secrets = effectiveSecrets.map((key) => this.renderSecretRow(key)).join('');
     const desktop = isDesktopRuntime();
     const fallbackHtml = available || allStaged ? '' : `<p class="runtime-feature-fallback fallback">${escapeHtml(feature.fallback)}</p>`;
+    const panelsHtml = feature.unlocksPanels?.length
+      ? `<p class="runtime-feature-panels"><span class="runtime-feature-panels-label">Panels:</span> ${feature.unlocksPanels.map((p) => `<span class="runtime-panel-chip">${escapeHtml(p)}</span>`).join('')}</p>`
+      : '';
 
     return `
       <section class="runtime-feature ${available ? 'available' : allStaged ? 'staged' : 'degraded'}">
@@ -288,6 +291,7 @@ export class RuntimeConfigPanel extends Panel {
           </label>
           <span class="runtime-pill ${pillClass}">${pillLabel}</span>
         </header>
+        ${panelsHtml}
         <div class="runtime-secrets">${secrets}</div>
         ${fallbackHtml}
       </section>

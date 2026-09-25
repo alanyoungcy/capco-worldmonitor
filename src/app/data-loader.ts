@@ -1220,8 +1220,8 @@ export class DataLoaderManager implements AppModule {
     }
 
     // tech-readiness is only seeded on full + tech variants (api/bootstrap.js +
-    // scripts/seed-wb-indicators.mjs); on commodity/finance/energy the 5s fetch
-    // at services/economic/index.ts:694 just times out. shouldLoad() alone is
+    // scripts/seed-wb-indicators.mjs); on commodity/finance/energy the fetch
+    // at services/economic/index.ts just times out. shouldLoad() alone is
     // not enough — loadAllData(true) on boot (App.ts:1226) bypasses the viewport
     // check via forceAll. Gate on variant defaults so this only fires where the
     // seed actually exists.

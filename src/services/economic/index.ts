@@ -19,7 +19,7 @@ import { mergeCbrPolicyRate } from './cbr-policy-rate';
 import { degradedSources, toEurSpotRows, toFxStressRows, toRubQuoteRows, toUsdSpotRows, type FxPanelRows } from './fx-rates';
 import { toApiUrl } from '@/services/runtime';
 import { hasPremiumAccess } from '@/services/panel-gating';
-import { EconomicServiceClient } from '@/services/generated-rpc-clients';
+import { EconomicServiceClient, InfrastructureServiceClient } from '@/services/generated-rpc-clients';
 
 // ---- Client + Circuit Breakers ----
 
@@ -648,6 +648,20 @@ export interface TechReadinessScore {
   };
 }
 
+const infraBootstrapClient = new InfrastructureServiceClient(getRpcBaseUrl(), {
+  fetch: (...args) => globalThis.fetch(...args),
+});
+
+function parseTechReadinessBootstrapPayload(raw: string | undefined): TechReadinessScore[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    return Array.isArray(parsed) ? parsed as TechReadinessScore[] : [];
+  } catch {
+    throw new Error('tech-readiness bootstrap payload was not valid JSON');
+  }
+}
+
 export async function getTechReadinessRankings(
   countries?: string[],
 ): Promise<TechReadinessScore[]> {
@@ -657,25 +671,24 @@ export async function getTechReadinessRankings(
     return countries ? hydrated.filter(s => countries.includes(s.country)) : hydrated;
   }
 
-  // Fallback: fetch the pre-computed seed key directly from the bootstrap
-  // endpoint. Data is seeded by seed-wb-indicators.mjs — never call the WB
-  // API from the frontend.
+  // Fallback: read the pre-computed seed via get-bootstrap-data RPC.
+  // Data is seeded by seed-wb-indicators.mjs — never call the WB API from
+  // the frontend.
   //
-  // Errors propagate. The previous shape collapsed HTTP failures, fetch
-  // aborts, and JSON parse errors into the same silent `return []` as a
-  // legitimate empty payload, so the panel could not distinguish "network
-  // failed, retry me" from "server says 0 records." That made a single
-  // transient blip render as a permanent empty state until app restart.
-  // Callers now decide UX: a thrown error → retry; an empty array →
-  // genuine empty state.
-  const resp = await fetch(toApiUrl('/api/bootstrap?keys=techReadiness'), {
-    signal: AbortSignal.timeout(5_000),
-  });
-  if (!resp.ok) {
-    throw new Error(`tech-readiness bootstrap HTTP ${resp.status}`);
-  }
-  const { data } = (await resp.json()) as { data: { techReadiness?: TechReadinessScore[] } };
-  const list = data.techReadiness ?? [];
+  // Prefer the infrastructure RPC over `/api/bootstrap`: Vite's local
+  // middleware does not execute legacy Edge handlers, so same-origin
+  // `/api/bootstrap` returns JS source and the panel stays empty even when
+  // Redis holds a healthy ~160KB techReadiness seed. The sebuf route is
+  // served by vite's sebuf plugin (and by production gateway) and uses the
+  // shared Redis timeout that Capco sets via REDIS_OP_TIMEOUT_MS.
+  //
+  // Errors propagate. Callers decide UX: thrown error → retry; empty array
+  // → genuine empty state.
+  const resp = await infraBootstrapClient.getBootstrapData(
+    { tier: '', keys: ['techReadiness'] },
+    { signal: AbortSignal.timeout(60_000) },
+  );
+  const list = parseTechReadinessBootstrapPayload(resp.data?.techReadiness);
   return countries ? list.filter(s => countries.includes(s.country)) : list;
 }
 

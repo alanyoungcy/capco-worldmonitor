@@ -45,6 +45,11 @@ import {
   enforceFreePanelLimit,
 } from '@/config';
 import { BETA_MODE } from '@/config/beta';
+import {
+  WEB_PREMIUM_PANEL_KEYS,
+  CLERK_PRO_ONLY_PANEL_KEYS,
+  isCapcoProUnlocked,
+} from '@/config/premium-panels';
 import { NQ_PULSE_DISCLOSURE } from '@/config/nq-context';
 import { t } from '@/services/i18n';
 import { getCurrentTheme } from '@/utils';
@@ -163,48 +168,18 @@ function writeSessionStorageValue(key: string, value: string): void {
  * these — `updatePanelGating()` calls `Panel.showGatedCta()` to render
  * "Sign In to Unlock" / "Upgrade to Pro" for non-premium users.
  *
- * INVARIANT: every panel listed in `apiKeyPanels` (src/config/panels.ts
- * `isPanelEntitled`) MUST appear here. If it's API-key-entitled but missing
- * from this set, anonymous/free-Clerk users see the panel mount and run
- * its loader (which writes empty/loading/error UI directly into the body)
- * instead of the lock CTA. The PRO badge in the title still renders, so
- * the symptom is "PRO badge + panel-internal loading or empty copy"
- * which looks broken (e.g. Regional Intelligence rendering its empty-state
- * "is being refreshed" message to anonymous users — see todo #257 item 8).
- *
- * The static test in tests/panel-config-guardrails.test.mjs enforces
- * `apiKeyPanels ⊆ WEB_PREMIUM_PANELS` so this drift can't recur silently.
+ * Edit the catalog in `src/config/premium-panels.ts` (Capco fork).
+ * Guardrail: tests/panel-config-guardrails.test.mjs.
  */
-const WEB_PREMIUM_PANELS = new Set([
-  'stock-analysis',
-  'stock-backtest',
-  'daily-market-brief',
-  'market-implications',
-  'deduction',
-  'chat-analyst',
-  'wsb-ticker-scanner',
-  'latest-brief',
-  'regional-intelligence',
-  'trade-policy',
-  'global-procurement',
-]);
+const WEB_PREMIUM_PANELS = new Set(WEB_PREMIUM_PANEL_KEYS);
 
 /**
  * Panels that require a Clerk-authenticated PRO account specifically.
  * Desktop API key / browser tester keys do NOT satisfy the gate because
- * these panels are bound to a Clerk userId server-side (e.g. the Brief
- * is stored at brief:{clerkUserId}:{date} in Redis — no Clerk user, no
- * brief to fetch).
- *
- * Without this extra gate, API-key + free-Clerk users would see the
- * panel "unlocked" by hasPremiumAccess() and then hit a 403 when the
- * server re-checks entitlement from the JWT. This set promotes the
- * inconsistency to the layout gating layer so the user sees the
- * correct "Upgrade to Pro" CTA instead of a doomed fetch.
+ * these panels are bound to a Clerk userId server-side.
+ * Edit via `clerkProOnly` in `src/config/premium-panels.ts`.
  */
-const WEB_CLERK_PRO_ONLY_PANELS = new Set([
-  'latest-brief',
-]);
+const WEB_CLERK_PRO_ONLY_PANELS = new Set(CLERK_PRO_ONLY_PANEL_KEYS);
 
 /**
  * Panel keys a dedicated panel owns but registers for AFTER the CANONICAL_FEEDS
@@ -1127,7 +1102,7 @@ export class PanelLayoutManager implements AppModule {
               <span class="variant-label">Good News</span>
             </a>`;
       })()}</div>
-          <span class="logo">MONITOR</span><span class="logo-mobile">World Monitor</span><span class="version">v${__APP_VERSION__}</span>${BETA_MODE ? '<span class="beta-badge">BETA</span>' : ''}
+          <span class="logo">CAPCO INTEL</span><span class="logo-mobile">Capco Monitor</span><span class="version">v${__APP_VERSION__}</span>${BETA_MODE ? '<span class="beta-badge">BETA</span>' : ''}
           <a href="https://x.com/eliehabib" target="_blank" rel="noopener" class="credit-link">
             <svg class="x-logo" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
             <span class="credit-text">@eliehabib</span>
@@ -1172,7 +1147,7 @@ export class PanelLayoutManager implements AppModule {
       <div class="mobile-menu-overlay" id="mobileMenuOverlay"></div>
       <nav class="mobile-menu" id="mobileMenu" aria-label="Menu">
         <div class="mobile-menu-header">
-          <span class="mobile-menu-title">WORLD MONITOR</span>
+          <span class="mobile-menu-title">CAPCO MONITOR</span>
           <button class="mobile-menu-close" id="mobileMenuClose" aria-label="Close menu">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
@@ -1310,11 +1285,11 @@ export class PanelLayoutManager implements AppModule {
         <div class="site-footer-brand">
           <img src="/favico/android-chrome-96x96.png" alt="" width="28" height="28" loading="lazy" decoding="async" class="site-footer-icon" />
           <div class="site-footer-brand-text">
-            <span class="site-footer-name">WORLD MONITOR</span>
+            <span class="site-footer-name">CAPCO MONITOR</span>
             <span class="site-footer-sub">v${__APP_VERSION__} &middot; <a href="https://x.com/eliehabib" target="_blank" rel="noopener" class="site-footer-credit">@eliehabib</a></span>
           </div>
         </div>
-        <nav aria-label="World Monitor references">
+        <nav aria-label="Capco Monitor references">
           ${referenceLinksHtml}
           <a href="${referenceOrigin}/pro#pricing" target="_blank" rel="noopener">Pricing</a>
           <a href="https://www.worldmonitor.app/blog/" target="_blank" rel="noopener">Blog</a>
@@ -1324,7 +1299,7 @@ export class PanelLayoutManager implements AppModule {
           <a href="https://x.com/worldmonitorai" target="_blank" rel="noopener">X</a>
           ${this.ctx.isDesktopApp ? '' : `<span id="footerDownloadMount"></span>`}
         </nav>
-        <span class="site-footer-copy">&copy; ${new Date().getFullYear()} World Monitor</span>
+        <span class="site-footer-copy">&copy; ${new Date().getFullYear()} Capco Monitor</span>
       </footer>
     `, "legacy direct innerHTML migration"));
     // Mark AFTER the innerHTML swap so the timestamp reflects when the new shell
@@ -3103,10 +3078,9 @@ export class PanelLayoutManager implements AppModule {
     this.lazyImportedPanel('tech-readiness', () => import('@/components/TechReadinessPanel'), 'TechReadinessPanel', (TechReadinessPanel) => {
       const p = new TechReadinessPanel();
       // Only auto-refresh on variants whose bootstrap seeds techReadiness
-      // (full + tech). On commodity/finance/energy the seed key is empty
-      // and the 5s fetch at services/economic/index.ts:694 just times out.
-      // The panel is still created so users who opt-in via settings can
-      // trigger a manual refresh from its UI.
+      // (full + tech). Capco Upstash + ~160KB payload needs the 30s client
+      // timeout in getTechReadinessRankings — the old 5s budget caused the
+      // pink error header despite a healthy Redis seed.
       if (isPanelInVariantDefaults('tech-readiness')) {
         void p.refresh();
       }
@@ -3369,86 +3343,91 @@ export class PanelLayoutManager implements AppModule {
     });
     panelsGrid.appendChild(addPanelBlock);
 
-    // Always create Pro and MCP add-panel blocks — show/hide reactively via auth state.
-    const proBlock = document.createElement('button');
-    proBlock.className = 'add-panel-block ai-widget-block ai-widget-block-pro';
-    proBlock.dataset.clsMover = 'pro-widget-cta';
-    proBlock.setAttribute('aria-label', t('widgets.createInteractive'));
-    const proIcon = document.createElement('span');
-    proIcon.className = 'add-panel-block-icon';
-    proIcon.textContent = '\u26a1';
-    const proLabel = document.createElement('span');
-    proLabel.className = 'add-panel-block-label';
-    proLabel.textContent = t('widgets.createInteractive');
-    const proBadge = document.createElement('span');
-    proBadge.className = 'widget-pro-badge';
-    proBadge.textContent = t('widgets.proBadge');
-    proBlock.appendChild(proIcon);
-    proBlock.appendChild(proLabel);
-    proBlock.appendChild(proBadge);
-    proBlock.addEventListener('click', () => {
-      void import('@/components/WidgetChatModal').then((m) => m.openWidgetChatModal({
-        mode: 'create',
-        tier: 'pro',
-        onComplete: (spec) => {
-          void this.addCustomWidget(spec).catch((error) => {
-            console.error('[widget-builder] failed to add widget', error);
-            showToast(t('widgets.saveFailed'));
-          });
-        },
-      })).catch((err) => console.error('[widget-chat] failed to lazy-load WidgetChatModal', err));
-    });
-    panelsGrid.appendChild(proBlock);
+    // Capco local unlock shows Pro panels but cannot reach the hosted Widget
+    // Agent / MCP relay (needs Railway + PRO_WIDGET_KEY). Hide those CTAs so
+    // Capco does not advertise features that always fail locally.
+    if (!isCapcoProUnlocked()) {
+      // Always create Pro and MCP add-panel blocks — show/hide reactively via auth state.
+      const proBlock = document.createElement('button');
+      proBlock.className = 'add-panel-block ai-widget-block ai-widget-block-pro';
+      proBlock.dataset.clsMover = 'pro-widget-cta';
+      proBlock.setAttribute('aria-label', t('widgets.createInteractive'));
+      const proIcon = document.createElement('span');
+      proIcon.className = 'add-panel-block-icon';
+      proIcon.textContent = '\u26a1';
+      const proLabel = document.createElement('span');
+      proLabel.className = 'add-panel-block-label';
+      proLabel.textContent = t('widgets.createInteractive');
+      const proBadge = document.createElement('span');
+      proBadge.className = 'widget-pro-badge';
+      proBadge.textContent = t('widgets.proBadge');
+      proBlock.appendChild(proIcon);
+      proBlock.appendChild(proLabel);
+      proBlock.appendChild(proBadge);
+      proBlock.addEventListener('click', () => {
+        void import('@/components/WidgetChatModal').then((m) => m.openWidgetChatModal({
+          mode: 'create',
+          tier: 'pro',
+          onComplete: (spec) => {
+            void this.addCustomWidget(spec).catch((error) => {
+              console.error('[widget-builder] failed to add widget', error);
+              showToast(t('widgets.saveFailed'));
+            });
+          },
+        })).catch((err) => console.error('[widget-chat] failed to lazy-load WidgetChatModal', err));
+      });
+      panelsGrid.appendChild(proBlock);
 
-    const mcpBlock = document.createElement('button');
-    mcpBlock.className = 'add-panel-block mcp-panel-block';
-    mcpBlock.dataset.clsMover = 'mcp-cta';
-    mcpBlock.setAttribute('aria-label', t('mcp.connectPanel'));
-    const mcpIcon = document.createElement('span');
-    mcpIcon.className = 'add-panel-block-icon';
-    mcpIcon.textContent = '\u26a1';
-    const mcpLabel = document.createElement('span');
-    mcpLabel.className = 'add-panel-block-label';
-    mcpLabel.textContent = t('mcp.connectPanel');
-    const mcpBadge = document.createElement('span');
-    mcpBadge.className = 'widget-pro-badge';
-    mcpBadge.textContent = t('widgets.proBadge');
-    mcpBlock.appendChild(mcpIcon);
-    mcpBlock.appendChild(mcpLabel);
-    mcpBlock.appendChild(mcpBadge);
-    mcpBlock.addEventListener('click', () => {
-      void import('@/components/McpConnectModal').then((m) => m.openMcpConnectModal({
-        onComplete: (spec) => this.addMcpPanel(spec),
-      })).catch((err) => console.error('[mcp-connect] failed to lazy-load McpConnectModal', err));
-    });
-    panelsGrid.appendChild(mcpBlock);
+      const mcpBlock = document.createElement('button');
+      mcpBlock.className = 'add-panel-block mcp-panel-block';
+      mcpBlock.dataset.clsMover = 'mcp-cta';
+      mcpBlock.setAttribute('aria-label', t('mcp.connectPanel'));
+      const mcpIcon = document.createElement('span');
+      mcpIcon.className = 'add-panel-block-icon';
+      mcpIcon.textContent = '\u26a1';
+      const mcpLabel = document.createElement('span');
+      mcpLabel.className = 'add-panel-block-label';
+      mcpLabel.textContent = t('mcp.connectPanel');
+      const mcpBadge = document.createElement('span');
+      mcpBadge.className = 'widget-pro-badge';
+      mcpBadge.textContent = t('widgets.proBadge');
+      mcpBlock.appendChild(mcpIcon);
+      mcpBlock.appendChild(mcpLabel);
+      mcpBlock.appendChild(mcpBadge);
+      mcpBlock.addEventListener('click', () => {
+        void import('@/components/McpConnectModal').then((m) => m.openMcpConnectModal({
+          onComplete: (spec) => this.addMcpPanel(spec),
+        })).catch((err) => console.error('[mcp-connect] failed to lazy-load McpConnectModal', err));
+      });
+      panelsGrid.appendChild(mcpBlock);
 
-    // Reactively show/hide Pro-only UI blocks ("Create Interactive Widget" +
-    // "Connect MCP" CTAs) based on premium access.
-    //
-    // hasPremiumAccess() folds in isEntitled() (Convex Dodo entitlement) per
-    // panel-gating.ts:11-27 — so a paying subscriber whose Clerk publicMetadata
-    // is never written by the webhook still resolves to true once the Convex
-    // snapshot lands. BUT: the snapshot lands AFTER auth state stabilises, and
-    // Convex updates do NOT necessarily fire a fresh subscribeAuthState event.
-    // Subscribing only to subscribeAuthState meant these CTAs stayed
-    // display:none for the whole page lifetime for paying users — exactly the
-    // shape PR #3505 chased on the server side, repeated here on the client.
-    //
-    // Subscribe to BOTH auth state and entitlement changes; whichever fires
-    // last (typically entitlements) is the one that flips the CTAs visible.
-    // Mirrors the same dual-subscription wiring used by updatePanelGating
-    // for existing panels (see lines ~259 and ~282).
-    const proBlocks = [proBlock, mcpBlock];
-    const applyProBlockGating = (isPro: boolean) => {
-      for (const block of proBlocks) {
-        block.style.display = isPro ? '' : 'none';
-      }
-    };
-    const reapply = () => applyProBlockGating(hasPremiumAccess(getAuthState()));
-    reapply();
-    this.proBlockUnsubscribe = subscribeAuthState(reapply);
-    this.proBlockEntitlementUnsubscribe = onEntitlementChange(reapply);
+      // Reactively show/hide Pro-only UI blocks ("Create Interactive Widget" +
+      // "Connect MCP" CTAs) based on premium access.
+      //
+      // hasPremiumAccess() folds in isEntitled() (Convex Dodo entitlement) per
+      // panel-gating.ts:11-27 — so a paying subscriber whose Clerk publicMetadata
+      // is never written by the webhook still resolves to true once the Convex
+      // snapshot lands. BUT: the snapshot lands AFTER auth state stabilises, and
+      // Convex updates do NOT necessarily fire a fresh subscribeAuthState event.
+      // Subscribing only to subscribeAuthState meant these CTAs stayed
+      // display:none for the whole page lifetime for paying users — exactly the
+      // shape PR #3505 chased on the server side, repeated here on the client.
+      //
+      // Subscribe to BOTH auth state and entitlement changes; whichever fires
+      // last (typically entitlements) is the one that flips the CTAs visible.
+      // Mirrors the same dual-subscription wiring used by updatePanelGating
+      // for existing panels (see lines ~259 and ~282).
+      const proBlocks = [proBlock, mcpBlock];
+      const applyProBlockGating = (isPro: boolean) => {
+        for (const block of proBlocks) {
+          block.style.display = isPro ? '' : 'none';
+        }
+      };
+      const reapply = () => applyProBlockGating(hasPremiumAccess(getAuthState()));
+      reapply();
+      this.proBlockUnsubscribe = subscribeAuthState(reapply);
+      this.proBlockEntitlementUnsubscribe = onEntitlementChange(reapply);
+    }
 
     const bottomGrid = document.getElementById('mapBottomGrid');
     if (bottomGrid) {

@@ -341,14 +341,25 @@ describe('getTechReadinessRankings — bootstrap-only data flow', () => {
     );
     assert.ok(hydratedCall, 'Must try bootstrap hydration cache first');
 
-    const bootstrapFetch = calls.find((call) => {
-      if (!isIdentifierNamed(call.expression, 'fetch')) return false;
+    // Fallback is the infrastructure get-bootstrap-data RPC (not legacy
+    // /api/bootstrap): Vite does not execute Edge handlers, and Capco Redis
+    // seeds are reachable through the sebuf plugin path.
+    const bootstrapRpc = calls.find((call) => {
+      if (!ts.isPropertyAccessExpression(call.expression)) return false;
+      if (!ts.isIdentifier(call.expression.name) || call.expression.name.text !== 'getBootstrapData') {
+        return false;
+      }
       const firstArg = call.arguments[0];
-      return ts.isCallExpression(firstArg)
-        && isIdentifierNamed(firstArg.expression, 'toApiUrl')
-        && isStringLiteralValue(firstArg.arguments[0], '/api/bootstrap?keys=techReadiness');
+      if (!firstArg || !ts.isObjectLiteralExpression(firstArg)) return false;
+      return firstArg.properties.some((prop) => {
+        if (!ts.isPropertyAssignment(prop) || !ts.isIdentifier(prop.name) || prop.name.text !== 'keys') {
+          return false;
+        }
+        return ts.isArrayLiteralExpression(prop.initializer)
+          && prop.initializer.elements.some((el) => isStringLiteralValue(el, 'techReadiness'));
+      });
     });
-    assert.ok(bootstrapFetch, 'Must fallback to bootstrap endpoint');
+    assert.ok(bootstrapRpc, 'Must fallback to get-bootstrap-data RPC for techReadiness');
 
     const wbCalls = calls.filter((call) => isIdentifierNamed(call.expression, 'getIndicatorData'));
     assert.equal(wbCalls.length, 0, 'Must NOT call getIndicatorData (WB API) from frontend');

@@ -65,6 +65,8 @@ export interface RuntimeFeatureDefinition {
   requiredSecrets: RuntimeSecretKey[];
   desktopRequiredSecrets?: RuntimeSecretKey[];
   fallback: string;
+  /** Dashboard panels / surfaces that need this feature's keys. */
+  unlocksPanels?: string[];
 }
 
 export interface RuntimeSecretState {
@@ -116,6 +118,7 @@ export const RUNTIME_FEATURES: RuntimeFeatureDefinition[] = [
     description: 'Local LLM provider via OpenAI-compatible endpoint (Ollama or LM Studio, desktop-first).',
     requiredSecrets: ['OLLAMA_API_URL', 'OLLAMA_MODEL'],
     fallback: 'Falls back to Groq, then OpenRouter, then local browser model.',
+    unlocksPanels: ['AI Market Insights', 'Daily Market Brief', 'Country Briefs', 'Deduction / forecasts'],
   },
   {
     id: 'aiGroq',
@@ -123,6 +126,7 @@ export const RUNTIME_FEATURES: RuntimeFeatureDefinition[] = [
     description: 'Primary fast LLM provider used for AI summary generation.',
     requiredSecrets: ['GROQ_API_KEY'],
     fallback: 'Falls back to OpenRouter, then local browser model.',
+    unlocksPanels: ['AI Market Insights', 'Daily Market Brief', 'Country Briefs', 'Stock Analysis AI'],
   },
   {
     id: 'aiOpenRouter',
@@ -130,6 +134,7 @@ export const RUNTIME_FEATURES: RuntimeFeatureDefinition[] = [
     description: 'Secondary LLM provider for AI summary fallback.',
     requiredSecrets: ['OPENROUTER_API_KEY'],
     fallback: 'Falls back to local browser model only.',
+    unlocksPanels: ['AI Market Insights', 'Daily Market Brief', 'Country Briefs', 'Stock Analysis AI'],
   },
   {
     id: 'stockNewsSearchExa',
@@ -137,6 +142,7 @@ export const RUNTIME_FEATURES: RuntimeFeatureDefinition[] = [
     description: 'Primary targeted stock-news search provider for premium analysis enrichment.',
     requiredSecrets: ['EXA_API_KEYS'],
     fallback: 'Falls back to Brave, then SerpAPI, then Google News RSS.',
+    unlocksPanels: ['Stock Analysis (news enrichment)'],
   },
   {
     id: 'stockNewsSearchBrave',
@@ -144,6 +150,7 @@ export const RUNTIME_FEATURES: RuntimeFeatureDefinition[] = [
     description: 'Fallback targeted stock-news provider for premium analysis enrichment.',
     requiredSecrets: ['BRAVE_API_KEYS'],
     fallback: 'Falls back to SerpAPI, then Google News RSS.',
+    unlocksPanels: ['Stock Analysis (news enrichment)'],
   },
   {
     id: 'stockNewsSearchSerpApi',
@@ -151,6 +158,7 @@ export const RUNTIME_FEATURES: RuntimeFeatureDefinition[] = [
     description: 'Additional targeted stock-news provider for premium analysis enrichment.',
     requiredSecrets: ['SERPAPI_API_KEYS'],
     fallback: 'Falls back to Google News RSS.',
+    unlocksPanels: ['Stock Analysis (news enrichment)'],
   },
   {
     id: 'economicFred',
@@ -158,6 +166,7 @@ export const RUNTIME_FEATURES: RuntimeFeatureDefinition[] = [
     description: 'Macro indicators from Federal Reserve Economic Data.',
     requiredSecrets: ['FRED_API_KEY'],
     fallback: 'Economic panel remains available with non-FRED metrics.',
+    unlocksPanels: ['Economic Data', 'Market Radar', 'Macro Signals', 'Supply Chain (shipping rates)'],
   },
   {
     id: 'energyEia',
@@ -165,6 +174,7 @@ export const RUNTIME_FEATURES: RuntimeFeatureDefinition[] = [
     description: 'US Energy Information Administration oil metrics.',
     requiredSecrets: ['EIA_API_KEY'],
     fallback: 'Oil analytics cards show disabled state.',
+    unlocksPanels: ['Oil & Energy analytics', 'Crude Inventories', 'Energy prices'],
   },
   {
     id: 'internetOutages',
@@ -172,6 +182,7 @@ export const RUNTIME_FEATURES: RuntimeFeatureDefinition[] = [
     description: 'Internet outages from Cloudflare Radar annotations API.',
     requiredSecrets: ['CLOUDFLARE_API_TOKEN'],
     fallback: 'Outage layer is disabled and map continues with other feeds.',
+    unlocksPanels: ['Internet Outages map layer'],
   },
   {
     id: 'acledConflicts',
@@ -179,6 +190,7 @@ export const RUNTIME_FEATURES: RuntimeFeatureDefinition[] = [
     description: 'Conflict and protest event feeds from ACLED.',
     requiredSecrets: ['ACLED_ACCESS_TOKEN'],
     fallback: 'Conflict/protest overlays are hidden.',
+    unlocksPanels: ['Conflicts map layer', 'Protests map layer'],
   },
   {
     id: 'ucdpConflicts',
@@ -186,6 +198,7 @@ export const RUNTIME_FEATURES: RuntimeFeatureDefinition[] = [
     description: 'Armed conflict georeferenced event data from Uppsala Conflict Data Program.',
     requiredSecrets: ['UCDP_ACCESS_TOKEN'],
     fallback: 'UCDP conflict layer is disabled.',
+    unlocksPanels: ['UCDP Conflict Events map layer'],
   },
   {
     id: 'abuseChThreatIntel',
@@ -193,6 +206,7 @@ export const RUNTIME_FEATURES: RuntimeFeatureDefinition[] = [
     description: 'URLhaus and ThreatFox IOC ingestion for the cyber threat layer.',
     requiredSecrets: ['URLHAUS_AUTH_KEY'],
     fallback: 'URLhaus/ThreatFox IOC ingestion is disabled.',
+    unlocksPanels: ['Cyber Threats map layer'],
   },
   {
     id: 'alienvaultOtxThreatIntel',
@@ -200,6 +214,7 @@ export const RUNTIME_FEATURES: RuntimeFeatureDefinition[] = [
     description: 'Optional OTX IOC ingestion for cyber threat enrichment.',
     requiredSecrets: ['OTX_API_KEY'],
     fallback: 'OTX IOC enrichment is disabled.',
+    unlocksPanels: ['Cyber Threats (OTX enrichment)'],
   },
   {
     id: 'abuseIpdbThreatIntel',
@@ -207,6 +222,7 @@ export const RUNTIME_FEATURES: RuntimeFeatureDefinition[] = [
     description: 'Optional AbuseIPDB IOC/reputation enrichment for the cyber threat layer.',
     requiredSecrets: ['ABUSEIPDB_API_KEY'],
     fallback: 'AbuseIPDB enrichment is disabled.',
+    unlocksPanels: ['Cyber Threats (AbuseIPDB enrichment)'],
   },
   {
     id: 'wingbitsEnrichment',
@@ -214,6 +230,7 @@ export const RUNTIME_FEATURES: RuntimeFeatureDefinition[] = [
     description: 'Military flight operator/aircraft enrichment metadata.',
     requiredSecrets: ['WINGBITS_API_KEY'],
     fallback: 'Flight map still renders with heuristic-only classification.',
+    unlocksPanels: ['Military Flights (operator enrichment)'],
   },
   {
     id: 'aisRelay',
@@ -222,6 +239,7 @@ export const RUNTIME_FEATURES: RuntimeFeatureDefinition[] = [
     requiredSecrets: ['WS_RELAY_URL', 'AISSTREAM_API_KEY'],
     desktopRequiredSecrets: ['AISSTREAM_API_KEY'],
     fallback: 'AIS layer is disabled.',
+    unlocksPanels: ['AIS Ships map layer'],
   },
   {
     id: 'openskyRelay',
@@ -230,6 +248,7 @@ export const RUNTIME_FEATURES: RuntimeFeatureDefinition[] = [
     requiredSecrets: ['VITE_OPENSKY_RELAY_URL', 'OPENSKY_CLIENT_ID', 'OPENSKY_CLIENT_SECRET'],
     desktopRequiredSecrets: ['OPENSKY_CLIENT_ID', 'OPENSKY_CLIENT_SECRET'],
     fallback: 'Military flights fall back to limited/no data.',
+    unlocksPanels: ['Military Flights (legacy OpenSky path)'],
   },
   {
     id: 'militaryFlights',
@@ -237,6 +256,7 @@ export const RUNTIME_FEATURES: RuntimeFeatureDefinition[] = [
     description: 'Military flight data via Redis-backed edge handler (no credentials needed).',
     requiredSecrets: [],
     fallback: 'Military flights panel is disabled.',
+    unlocksPanels: ['Military Flights map layer'],
   },
   {
     id: 'finnhubMarkets',
@@ -244,6 +264,7 @@ export const RUNTIME_FEATURES: RuntimeFeatureDefinition[] = [
     description: 'Delayed or seeded stock quotes via Finnhub when configured. A key is not a live tape.',
     requiredSecrets: ['FINNHUB_API_KEY'],
     fallback: 'Stock ticker uses limited free data.',
+    unlocksPanels: ['Live Markets', 'Stock Analysis', 'Sector Heatmap', 'Custom watchlists', 'Country stock index'],
   },
   {
     id: 'nasaFirms',
@@ -251,6 +272,7 @@ export const RUNTIME_FEATURES: RuntimeFeatureDefinition[] = [
     description: 'Fire Information for Resource Management System satellite data.',
     requiredSecrets: ['NASA_FIRMS_API_KEY'],
     fallback: 'FIRMS fire layer uses public VIIRS feed.',
+    unlocksPanels: ['Fires map layer'],
   },
   {
     id: 'wtoTrade',
@@ -258,6 +280,7 @@ export const RUNTIME_FEATURES: RuntimeFeatureDefinition[] = [
     description: 'Trade restrictions, tariff trends, barriers, and flows from WTO.',
     requiredSecrets: ['WTO_API_KEY'],
     fallback: 'Trade policy panel shows disabled state.',
+    unlocksPanels: ['Trade Policy / WTO panels'],
   },
   {
     id: 'supplyChain',
@@ -265,6 +288,7 @@ export const RUNTIME_FEATURES: RuntimeFeatureDefinition[] = [
     description: 'Shipping rates via FRED Baltic Dry Index. Chokepoints and minerals use public data.',
     requiredSecrets: ['FRED_API_KEY'],
     fallback: 'Chokepoints and minerals always available; shipping requires FRED key.',
+    unlocksPanels: ['Supply Chain (Baltic Dry / shipping rates)'],
   },
   {
     id: 'newsPerFeedFallback',
@@ -272,6 +296,7 @@ export const RUNTIME_FEATURES: RuntimeFeatureDefinition[] = [
     description: 'If digest aggregation is unavailable, use stale headlines first and optionally fetch a limited feed subset.',
     requiredSecrets: [],
     fallback: 'Stale headlines remain available; limited per-feed fallback is disabled.',
+    unlocksPanels: ['Market Headlines', 'Live News'],
   },
   {
     id: 'aviationStack',
@@ -279,6 +304,7 @@ export const RUNTIME_FEATURES: RuntimeFeatureDefinition[] = [
     description: 'Real-time international airport delay data via Railway relay (seed loop + proxy).',
     requiredSecrets: ['WS_RELAY_URL'],
     fallback: 'Non-US airports use simulated delay data.',
+    unlocksPanels: ['Airport Delays'],
   },
   {
     id: 'icaoNotams',
@@ -286,6 +312,7 @@ export const RUNTIME_FEATURES: RuntimeFeatureDefinition[] = [
     description: 'Airport closure detection for MENA airports from ICAO NOTAM data service.',
     requiredSecrets: ['ICAO_API_KEY'],
     fallback: 'Closures detected only via AviationStack flight cancellation data.',
+    unlocksPanels: ['Airport Closures (MENA NOTAMs)'],
   },
 ];
 

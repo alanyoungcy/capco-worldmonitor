@@ -122,7 +122,14 @@ const SHADOW_TTL_SEC = 7 * 24 * 60 * 60; // 7d
 // a 6–10s reasoning model (#4983); flash serves it at ~1.6–2.4s. openrouter
 // primary, groq-70B fallback if openrouter is down. Reasoning stays off
 // (callLlm default). Both whyMatters paths share this route.
-const WHY_MATTERS_PROVIDER_ORDER = ['openrouter', 'groq'];
+const WHY_MATTERS_PROVIDER_ORDER = (
+  process.env.CAPCO_LLM_ONLY === '1'
+  || process.env.CAPCO_LLM_ONLY === 'true'
+  || process.env.LLM_PRIMARY_PROVIDER === 'generic'
+  || (process.env.LLM_API_URL && process.env.LLM_API_KEY && process.env.LLM_MODEL && !process.env.OPENROUTER_API_KEY)
+)
+  ? ['generic', 'openrouter', 'groq']
+  : ['openrouter', 'groq'];
 const WHY_MATTERS_MODEL_OVERRIDES = { openrouter: 'deepseek/deepseek-v4-flash' } as const;
 
 // ── Validation ────────────────────────────────────────────────────────

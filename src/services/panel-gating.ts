@@ -21,6 +21,7 @@ import { openExternalUrl } from './external-navigation';
 import type { ClientEntitlementBelief } from './premium-denial';
 import { getSecretState } from './runtime-config';
 import { isProUser } from './widget-store';
+import { isCapcoProUnlocked } from '@/config/premium-panels';
 
 export enum PanelGateReason {
   NONE = 'none',           // show content (pro user, or desktop with API key, or non-premium panel)
@@ -79,6 +80,8 @@ export type PremiumAccessGrant = 'api_key' | 'pro_user' | 'auth_role' | 'none';
  * for the report, since earlier arms shadow later ones.
  */
 export function readPremiumAccessGrant(authState?: AuthSession): PremiumAccessGrant {
+  // Capco local fork: unlock Pro panels without a subscription.
+  if (isCapcoProUnlocked()) return 'pro_user';
   if (getSecretState('WORLDMONITOR_API_KEY').present) return 'api_key';
   if (isProUser()) return 'pro_user';
   if (authState?.user?.role === 'pro') return 'auth_role';

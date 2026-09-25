@@ -1,5 +1,6 @@
 import { subscribeAuthState, type AuthSession } from '@/services/auth-state';
 import { mountUserButton, openSignIn, openSignUp } from '@/services/clerk';
+import { isCapcoProUnlocked } from '@/config/premium-panels';
 import { t } from '@/services/i18n';
 import { setTrustedHtml, trustedHtml } from '@/utils/dom-utils';
 
@@ -58,25 +59,16 @@ export class AuthHeaderWidget {
     this.renderSignedIn();
   }
 
-  private renderPending(): void {
-    this.unmountUserButton?.();
-    this.unmountUserButton = null;
-    this.container.classList.add('auth-header-widget-pending');
-    this.container.setAttribute('aria-busy', 'true');
-    setTrustedHtml(this.container, trustedHtml('', 'legacy direct innerHTML migration'));
-
-    const signInSkeleton = document.createElement('span');
-    signInSkeleton.className = 'auth-header-skeleton auth-header-skeleton-signin';
-    signInSkeleton.setAttribute('aria-hidden', 'true');
-    this.container.appendChild(signInSkeleton);
-
-    const signUpSkeleton = document.createElement('span');
-    signUpSkeleton.className = 'auth-header-skeleton auth-header-skeleton-signup';
-    signUpSkeleton.setAttribute('aria-hidden', 'true');
-    this.container.appendChild(signUpSkeleton);
-  }
-
   private renderSignedOut(): void {
+    // Capco local fork: no Sign In / Create Account — treated as default entitled.
+    if (isCapcoProUnlocked()) {
+      this.container.classList.add('auth-header-widget-capco');
+      this.container.setAttribute('aria-hidden', 'true');
+      return;
+    }
+    this.container.classList.remove('auth-header-widget-capco');
+    this.container.removeAttribute('aria-hidden');
+
     const signInBtn = document.createElement('button');
     signInBtn.className = 'auth-signin-btn';
     signInBtn.textContent = t('auth.signIn');
@@ -91,6 +83,32 @@ export class AuthHeaderWidget {
     signUpLink.textContent = t('auth.createAccount');
     signUpLink.addEventListener('click', () => openSignUp());
     this.container.appendChild(signUpLink);
+  }
+
+  private renderPending(): void {
+    this.unmountUserButton?.();
+    this.unmountUserButton = null;
+    if (isCapcoProUnlocked()) {
+      this.container.classList.remove('auth-header-widget-pending');
+      this.container.removeAttribute('aria-busy');
+      setTrustedHtml(this.container, trustedHtml('', 'legacy direct innerHTML migration'));
+      this.container.classList.add('auth-header-widget-capco');
+      this.container.setAttribute('aria-hidden', 'true');
+      return;
+    }
+    this.container.classList.add('auth-header-widget-pending');
+    this.container.setAttribute('aria-busy', 'true');
+    setTrustedHtml(this.container, trustedHtml('', 'legacy direct innerHTML migration'));
+
+    const signInSkeleton = document.createElement('span');
+    signInSkeleton.className = 'auth-header-skeleton auth-header-skeleton-signin';
+    signInSkeleton.setAttribute('aria-hidden', 'true');
+    this.container.appendChild(signInSkeleton);
+
+    const signUpSkeleton = document.createElement('span');
+    signUpSkeleton.className = 'auth-header-skeleton auth-header-skeleton-signup';
+    signUpSkeleton.setAttribute('aria-hidden', 'true');
+    this.container.appendChild(signUpSkeleton);
   }
 
   private renderSignedIn(): void {

@@ -3,6 +3,7 @@ import { safeStorageGet } from '@/utils/safe-storage';
 import { clearPanelColSpanEntry, clearPanelSpanEntry } from '@/utils/panel-storage';
 import { getAuthState } from '@/services/auth-state';
 import { isEntitled, getEntitlementState } from '@/services/entitlements';
+import { isCapcoProUnlocked } from '@/config/premium-panels';
 import {
   clearBrowserKeySession,
   migrateLegacyKeysToHttpOnlySession,
@@ -236,6 +237,7 @@ export function isProWidgetEnabled(): boolean {
 
 export function isProUser(): boolean {
   return (
+    isCapcoProUnlocked() ||
     isWidgetFeatureEnabled() ||
     isProWidgetEnabled() ||
     getAuthState().user?.role === 'pro' ||

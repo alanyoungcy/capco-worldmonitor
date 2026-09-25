@@ -6,6 +6,7 @@ import { getAuthState, subscribeAuthState } from '@/services/auth-state';
 import { getCurrentClerkUser, isClerkAuthEnabled } from '@/services/clerk';
 import { getSecretState } from '@/services/runtime-config';
 import { isProWidgetEnabled, isWidgetFeatureEnabled } from '@/services/widget-store';
+import { isCapcoProUnlocked } from '@/config/premium-panels';
 import {
   applyProBannerEntitlementHint,
   decideProBannerMount,
@@ -127,6 +128,7 @@ function writePremiumHint(premium: boolean): void {
 
 function hasLocalUnlockPremium(): boolean {
   return (
+    isCapcoProUnlocked() ||
     getSecretState('WORLDMONITOR_API_KEY').present ||
     isProWidgetEnabled() ||
     isWidgetFeatureEnabled()
@@ -213,6 +215,17 @@ export function showProBanner(container: HTMLElement): void {
   // regardless of premium state, so caching here covers both "initially
   // free" and "initially premium then downgrade" trajectories.
   bannerContainer = container;
+
+  // Capco local fork: no upsell strip, no reserved banner height.
+  if (isCapcoProUnlocked()) {
+    // Persist entitled hint so the next load's prepaint skips the reserved slot.
+    writePremiumHint(true);
+    setReservation(false);
+    document.documentElement.classList.remove(RESERVATION_CLASS);
+    bannerEl?.remove();
+    bannerEl = null;
+    return;
+  }
 
   if (bannerEl && !bannerEl.isConnected) {
     bannerEl = null;
@@ -331,6 +344,18 @@ export function isProBannerVisible(): boolean {
 //     → re-mount via showProBanner. Same gate set as the initial mount path,
 //       so we can never surface a banner the user has already ✕'d this week.
 function syncProBanner(): void {
+  if (isCapcoProUnlocked()) {
+    writePremiumHint(true);
+    setReservation(false);
+    document.documentElement.classList.remove(RESERVATION_CLASS);
+    if (bannerEl) {
+      cancelPendingBannerRemoval();
+      bannerEl.remove();
+      bannerEl = null;
+    }
+    return;
+  }
+
   const {
     premium,
     accountBacked,

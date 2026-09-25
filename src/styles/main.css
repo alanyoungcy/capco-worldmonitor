@@ -1,6 +1,7 @@
 @import './rtl-overrides.css';
 @import './panels.css';
 @import './route-explorer.css';
+@import './capco-brand.css';
 
 /* ============================================================
    Theme Colors — overridden by [data-theme="light"] below
@@ -54,17 +55,23 @@
   --map-country: #0a2018;
   --map-stroke: #0f5040;
 
-  /* Font stack */
-  --font-mono: 'SF Mono', 'Monaco', 'Cascadia Code', 'Fira Code', 'DejaVu Sans Mono', 'Liberation Mono', monospace;
-  /* Base body font, controlled by font preference (mono vs system) */
-  --font-body-base: var(--font-mono);
-  /* Effective body font used throughout the app */
-  --font-body: var(--font-body-base);
+  /* Font stack — Capco: Montserrat (Gotham-like) + mono for data */
+  --font-mono: 'IBM Plex Mono', 'SF Mono', 'Monaco', 'Cascadia Code', 'Fira Code', 'DejaVu Sans Mono', monospace;
+  --font-capco-sans: 'Montserrat', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --font-capco-display: 'Libre Baskerville', Baskerville, Georgia, 'Times New Roman', serif;
+  --font-body-base: var(--font-capco-sans);
+  --font-body: var(--font-capco-sans);
+
+  /* Capco brand accents (https://www.capco.com/) */
+  --capco-red: #e30613;
+  --capco-red-strong: #b8050f;
+  --green: var(--capco-red);
+  --red-strong: var(--capco-red-strong);
 }
 
 /* System font selection via data-font attribute (avoids inline style specificity issues with RTL) */
 [data-font="system"] {
-  --font-body-base: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-body-base: var(--font-capco-sans);
 }
 
 [dir="rtl"] {
@@ -113,7 +120,7 @@
   --defcon-5: #2d8a6e;
 
   /* Status indicators */
-  --status-live: #44ff88;
+  --status-live: #e30613;
   --status-cached: #ffaa00;
   --status-unavailable: #ff4444;
 
@@ -122,8 +129,8 @@
   /* Darker red for white-text "active/live" pills: #fff on --red is only
      3.4:1, on --red-strong it clears WCAG AA (≈5:1). Theme-independent (the
      pill is red in both themes). */
-  --red-strong: #d62b2b;
-  --green: #44ff88;
+  --red-strong: #b8050f;
+  --green: #e30613;
   --yellow: #ffaa00;
 }
 
@@ -9032,6 +9039,47 @@ a.prediction-link:hover {
   min-width: 0;
 }
 
+.panels-pro-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  margin: 0 0 10px;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--green) 40%, var(--border));
+  background: color-mix(in srgb, var(--green) 8%, var(--bg));
+  color: var(--text-secondary);
+  font-size: calc(11px * var(--wm-panel-effective-scale, 1));
+  line-height: 1.4;
+}
+
+.panels-pro-legend code {
+  font-size: 0.95em;
+  color: var(--text-primary);
+}
+
+.panel-settings-item.is-pro-panel .panel-toggle-item {
+  border-color: color-mix(in srgb, var(--green) 55%, var(--border));
+  background: color-mix(in srgb, var(--green) 10%, var(--bg));
+  box-shadow: inset 3px 0 0 var(--green);
+}
+
+.panel-settings-item.is-pro-locked .panel-toggle-item {
+  border-color: color-mix(in srgb, var(--semantic-elevated, #d97706) 50%, var(--border));
+  background: color-mix(in srgb, var(--semantic-elevated, #d97706) 8%, var(--bg));
+  box-shadow: inset 3px 0 0 var(--semantic-elevated, #d97706);
+}
+
+.panel-toggle-pro-note {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: calc(9px * var(--wm-panel-effective-scale, 1));
+  color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .panel-toggle-item {
   display: flex;
   align-items: center;
@@ -9143,8 +9191,9 @@ a.prediction-link:hover {
   padding: 1px 4px;
   border: 1px solid var(--green);
   color: var(--green);
-  opacity: 0.7;
+  opacity: 1;
   flex-shrink: 0;
+  background: color-mix(in srgb, var(--green) 15%, transparent);
 }
 
 /* Sources Modal */
@@ -22648,6 +22697,33 @@ body.has-breaking-alert .panels-grid {
   color: var(--text-secondary);
 }
 
+.runtime-feature-panels {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  margin: 4px 0 8px;
+  font-size: calc(11px * var(--wm-panel-effective-scale, 1));
+  color: var(--text-secondary);
+}
+
+.runtime-feature-panels-label {
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-right: 2px;
+}
+
+.runtime-panel-chip {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 4px;
+  border: 1px solid color-mix(in srgb, var(--status-live) 45%, var(--overlay-heavy));
+  background: color-mix(in srgb, var(--status-live) 12%, transparent);
+  color: var(--text-primary);
+  font-size: calc(10px * var(--wm-panel-effective-scale, 1));
+  line-height: 1.5;
+}
+
 .runtime-pill {
   font-size: calc(10px * var(--wm-panel-effective-scale, 1));
   padding: 2px 6px;
@@ -24573,6 +24649,10 @@ body.map-width-resizing {
   align-items: center;
   position: relative;
   gap: 8px;
+}
+
+.auth-header-widget-capco {
+  display: none;
 }
 
 .auth-signup-link {

@@ -294,6 +294,14 @@ function htmlVariantPlugin(activeMeta: VariantMeta, activeVariant: string, isDes
           .replace(/\/favico\/og-image/g, `/favico/${activeVariant}/og-image`);
       }
 
+      // Capco local fork: skip Pro banner reserved slot on first paint.
+      if (process.env.VITE_CAPCO_UNLOCK_PRO === '1' || process.env.VITE_CAPCO_UNLOCK_PRO === 'true') {
+        result = result.replace(
+          /var entitledHint=localStorage\.getItem\('wm-entitlement-hint'\)==='pro';/,
+          'var entitledHint=true;'
+        );
+      }
+
       return result;
     },
   };

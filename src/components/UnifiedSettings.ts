@@ -15,6 +15,7 @@ import {
 } from '@/config/panels';
 import { isProUser } from '@/services/widget-store';
 import { SITE_VARIANT } from '@/config/variant';
+import { PREMIUM_PANEL_BY_KEY, isCapcoProUnlocked } from '@/config/premium-panels';
 import { t } from '@/services/i18n';
 import { createSettingsButton } from '@/components/settings-button';
 import { confirmDialog } from '@/components/confirm-dialog';
@@ -917,6 +918,12 @@ export class UnifiedSettings {
           <div class="panels-search">
             <input type="text" placeholder="${t('header.filterPanels')}" aria-label="${t('header.filterPanels')}" value="${escapeHtml(this.panelFilter)}" />
           </div>
+          <p class="panels-pro-legend" role="note">
+            <span class="panel-toggle-pro-badge">PRO</span>
+            Highlighted panels need a Pro plan (or local <code>VITE_CAPCO_UNLOCK_PRO=1</code>).
+            Edit the list in <code>src/config/premium-panels.ts</code>.
+            ${isCapcoProUnlocked() ? ' <strong>Capco unlock is ON — Pro panels are unlocked locally.</strong>' : ''}
+          </p>
           <div class="panel-toggle-grid" id="usPanelToggles"></div>
           <div class="panels-footer">
             <span class="panels-status" id="usPanelsStatus" aria-live="polite"></span>
@@ -1467,17 +1474,21 @@ export class UnifiedSettings {
       const resolvedPanel = ALL_PANELS[key] ? getEffectivePanelConfig(key, SITE_VARIANT) : panel;
       const entitled = isPanelEntitled(key, resolvedPanel, pro);
       const locked = !entitled;
+      const premiumMeta = PREMIUM_PANEL_BY_KEY.get(key);
+      const isProPanel = Boolean(premiumMeta || resolvedPanel.premium);
       const changed = !locked && this.isPanelDraftChanged(key, panel, savedSettings);
       const displayName = this.config.getLocalizedPanelName(key, resolvedPanel.name ?? panel.name);
       const a11yState = getPanelToggleA11yState(locked, panel.enabled, displayName);
       // Sandboxed MCP iframes cannot inherit the host panel's CSS scale.
       const supportsPanelFontScale = key !== 'map' && !key.startsWith('mcp-');
+      const proNote = premiumMeta?.note ? `<span class="panel-toggle-pro-note">${escapeHtml(premiumMeta.note)}</span>` : '';
       return `
-        <div class="panel-settings-item">
-          <button type="button" class="panel-toggle-item ${panel.enabled && !locked ? 'active' : ''}${changed ? ' changed' : ''}${locked ? ' pro-locked' : ''}" data-panel="${escapeHtml(key)}" ${a11yState.ariaPressed === null ? '' : `aria-pressed="${a11yState.ariaPressed}"`} ${a11yState.ariaLabel === null ? '' : `aria-label="${escapeHtml(a11yState.ariaLabel)}"`} ${locked ? 'data-pro-locked="1"' : ''}>
+        <div class="panel-settings-item${isProPanel ? ' is-pro-panel' : ''}${locked ? ' is-pro-locked' : ''}">
+          <button type="button" class="panel-toggle-item ${panel.enabled && !locked ? 'active' : ''}${changed ? ' changed' : ''}${locked ? ' pro-locked' : ''}${isProPanel ? ' is-pro' : ''}" data-panel="${escapeHtml(key)}" ${a11yState.ariaPressed === null ? '' : `aria-pressed="${a11yState.ariaPressed}"`} ${a11yState.ariaLabel === null ? '' : `aria-label="${escapeHtml(a11yState.ariaLabel)}"`} ${locked ? 'data-pro-locked="1"' : ''}>
             <div class="panel-toggle-checkbox" aria-hidden="true">${panel.enabled && !locked ? '\u2713' : ''}${locked ? '\uD83D\uDD12' : ''}</div>
             <span class="panel-toggle-label">${escapeHtml(displayName)}</span>
-            ${(locked || resolvedPanel.premium) ? '<span class="panel-toggle-pro-badge" aria-hidden="true">PRO</span>' : ''}
+            ${proNote}
+            ${(locked || isProPanel) ? '<span class="panel-toggle-pro-badge" aria-hidden="true">PRO</span>' : ''}
           </button>
           ${supportsPanelFontScale ? `<label class="panel-font-scale-control">
             <span>${escapeHtml(panelFontScaleLabel)}</span>

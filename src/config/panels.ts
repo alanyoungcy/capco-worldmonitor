@@ -6,6 +6,10 @@ import { isDesktopRuntime } from '@/services/runtime';
 import { getSecretState } from '@/services/runtime-config';
 // boundary-ignore: isEntitled is a pure state check with no side effects
 import { isEntitled } from '@/services/entitlements';
+import {
+  API_KEY_PREMIUM_PANEL_KEYS,
+  isCapcoProUnlocked,
+} from '@/config/premium-panels';
 
 const _desktop = isDesktopRuntime();
 
@@ -1257,7 +1261,7 @@ export function getInitialPanelSettingsForVariant(variant: string): Record<strin
  * (which just checks `key in panelSettings`) true everywhere. Auto-refresh
  * paths that fan out a fetch must instead gate on the variant defaults —
  * otherwise variants whose backend doesn't seed the panel's bootstrap key
- * (e.g. tech-readiness on commodity/finance/energy) blow their 5s fetch
+ * (e.g. tech-readiness on commodity/finance/energy) blow their 30s fetch
  * budget on a key that will never populate.
  */
 const SITE_VARIANT_DEFAULTS = new Set(VARIANT_DEFAULTS[SITE_VARIANT] ?? []);
@@ -1300,10 +1304,25 @@ export function restoreFreeMapPanelAccess(
  */
 export function isPanelEntitled(key: string, config: PanelConfig, isPro = false): boolean {
   if (!config.premium) return true;
+  // Capco local fork unlock
+  if (isCapcoProUnlocked()) return true;
   // Dodo entitlements unlock all premium panels
   if (isEntitled()) return true;
-  const apiKeyPanels = ['stock-analysis', 'stock-backtest', 'daily-market-brief', 'market-implications', 'regional-intelligence', 'deduction', 'chat-analyst', 'wsb-ticker-scanner', 'trade-policy', 'global-procurement'];
-  if (apiKeyPanels.includes(key)) {
+  // Keep a source-parseable literal for guardrail tests; keep in sync with
+  // API_KEY_PREMIUM_PANEL_KEYS in src/config/premium-panels.ts.
+  const apiKeyPanels = [
+    'stock-analysis',
+    'stock-backtest',
+    'daily-market-brief',
+    'market-implications',
+    'regional-intelligence',
+    'deduction',
+    'chat-analyst',
+    'wsb-ticker-scanner',
+    'trade-policy',
+    'global-procurement',
+  ];
+  if (apiKeyPanels.includes(key) || API_KEY_PREMIUM_PANEL_KEYS.includes(key)) {
     return getSecretState('WORLDMONITOR_API_KEY').present || isPro;
   }
   if (config.premium === 'locked') {

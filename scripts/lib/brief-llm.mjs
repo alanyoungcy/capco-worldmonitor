@@ -125,9 +125,10 @@ const DIGEST_PROSE_TTL_SEC = 4 * 60 * 60;
 const STORY_DESCRIPTION_TTL_SEC = 24 * 60 * 60;
 const WHY_MATTERS_CONCURRENCY = 5;
 
-// Pin to openrouter. Ollama isn't deployed in Railway, and pinning keeps the
-// brief's editorial voice on one model across environments instead of drifting
-// to the groq fallback.
+// Capco / self-host: prefer LLM_API_URL when configured; otherwise pin openrouter.
+// Pin to openrouter in production. Ollama isn't deployed in Railway, and pinning
+// keeps the brief's editorial voice on one model across environments instead of
+// drifting to the groq fallback.
 const BRIEF_LLM_ALLOWED_PROVIDERS = ['openrouter'];
 
 // The brief names its own model rather than inheriting the llm-chain default
@@ -139,6 +140,26 @@ const BRIEF_LLM_ALLOWED_PROVIDERS = ['openrouter'];
 // constant. Any change here bumps all three model-fed cache generations below.
 const BRIEF_LLM_OPENROUTER_MODEL = process.env.BRIEF_LLM_OPENROUTER_MODEL || 'google/gemini-3.5-flash-lite';
 const BRIEF_LLM_MODEL_OVERRIDES = { openrouter: BRIEF_LLM_OPENROUTER_MODEL };
+
+function resolveBriefLlmRouting() {
+  const hasGeneric = Boolean(process.env.LLM_API_URL && process.env.LLM_API_KEY && process.env.LLM_MODEL);
+  const capcoOnly = process.env.CAPCO_LLM_ONLY === '1' || process.env.CAPCO_LLM_ONLY === 'true'
+    || process.env.LLM_PRIMARY_PROVIDER === 'generic';
+  if (hasGeneric && (capcoOnly || !process.env.OPENROUTER_API_KEY)) {
+    return {
+      allowedProviders: ['generic', 'openrouter'],
+      modelOverrides: {
+        generic: process.env.LLM_MODEL,
+        openrouter: BRIEF_LLM_OPENROUTER_MODEL,
+      },
+    };
+  }
+  return {
+    allowedProviders: BRIEF_LLM_ALLOWED_PROVIDERS,
+    modelOverrides: BRIEF_LLM_MODEL_OVERRIDES,
+  };
+}
+const BRIEF_LLM_ROUTING = resolveBriefLlmRouting();
 
 // ── whyMatters (per story) ─────────────────────────────────────────────────
 // The pure helpers (`WHY_MATTERS_SYSTEM`, `buildWhyMattersUserPrompt` (aliased
@@ -269,8 +290,8 @@ export async function generateWhyMatters(story, deps) {
       maxTokens: 120,
       temperature: 0.4,
       timeoutMs: 10_000,
-      allowedProviders: BRIEF_LLM_ALLOWED_PROVIDERS,
-      modelOverrides: BRIEF_LLM_MODEL_OVERRIDES,
+      allowedProviders: BRIEF_LLM_ROUTING.allowedProviders,
+      modelOverrides: BRIEF_LLM_ROUTING.modelOverrides,
       stage: 'brief-whymatters-cron',
     });
   } catch {
@@ -429,8 +450,8 @@ export async function generateStoryDescription(story, deps) {
       maxTokens: 140,
       temperature: 0.4,
       timeoutMs: 10_000,
-      allowedProviders: BRIEF_LLM_ALLOWED_PROVIDERS,
-      modelOverrides: BRIEF_LLM_MODEL_OVERRIDES,
+      allowedProviders: BRIEF_LLM_ROUTING.allowedProviders,
+      modelOverrides: BRIEF_LLM_ROUTING.modelOverrides,
       stage: 'brief-description-cron',
     });
   } catch {
@@ -1051,8 +1072,8 @@ export async function generateDigestProse(userId, stories, sensitivity, deps, ct
       maxTokens: 900,
       temperature: 0.4,
       timeoutMs: 15_000,
-      allowedProviders: BRIEF_LLM_ALLOWED_PROVIDERS,
-      modelOverrides: BRIEF_LLM_MODEL_OVERRIDES,
+      allowedProviders: BRIEF_LLM_ROUTING.allowedProviders,
+      modelOverrides: BRIEF_LLM_ROUTING.modelOverrides,
       stage: 'brief-digest-cron',
     });
   } catch (err) {
